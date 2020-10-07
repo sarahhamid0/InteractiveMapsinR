@@ -1,0 +1,3 @@
+"0","suppressPackageStartupMessages(library(rnaturalearth))"
+"0","suppressPackageStartupMessages(library(rnaturalearthdata))"
+"0","suppressPackageStartupMessages(library(sf))"

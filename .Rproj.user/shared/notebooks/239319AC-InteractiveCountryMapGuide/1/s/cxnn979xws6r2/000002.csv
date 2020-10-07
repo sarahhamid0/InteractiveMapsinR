@@ -1,0 +1,4 @@
+"0",""
+"0","newdata <- data[-which(is.na(data)), ] %>%"
+"0","  add_row(country_name = countrycode(""United Kingdom"", origin = 'country.name', destination = 'iso3c'), trip_type = ""visit"")"
+"0",""

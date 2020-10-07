@@ -1,0 +1,5 @@
+"0","world <- ne_countries(scale = ""medium"", returnclass = ""sf"") "
+"0",""
+"0","newdata2 <- rename(newdata, iso_a3 = country_name)"
+"0",""
+"0","world2 <- merge(world, newdata2, all = TRUE)"
