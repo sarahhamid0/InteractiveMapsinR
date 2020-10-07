@@ -1,6 +1,0 @@
-"0",""
-"0","data <- read.csv(""countries.csv"", header = TRUE)"
-"0","  "
-"0","data$country_name <- countrycode(data$country_name, origin = 'country.name', destination = 'iso3c')"
-"2","Some values were not matched unambiguously: England, Scotland
-"

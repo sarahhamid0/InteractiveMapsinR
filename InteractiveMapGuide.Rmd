@@ -1,0 +1,185 @@
+---
+title: "Creating an Interactive Map in R"
+author: "Sarah Hamid"
+date: "10/7/2020"
+output:
+  
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+I traveled a fair bit over the years, and have always been curious about just how much of the world I managed to cover. Well, what better way to illustrate my travels than to create an interactive map visualization in R. 
+
+# Getting started
+
+We'll need to install and load the following packages in order to re-code country names to ISO3 codes, plot the map, add and remove rows from the data frame without leaving R, and ????
+
+```{r}
+suppressPackageStartupMessages(library(countrycode))
+suppressPackageStartupMessages(library(rworldmap))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+```
+
+## Prepping my data
+
+I had been keeping a list in Notes of the places I have been to. To prep for this tasks, I copied them into Google Sheets and quickly assigned them one of three categorical values: visit, transit, long_term. I then saved this as a .csv file in my working directory. 
+
+1. Load the countries.csv file and store it as an object `data`
+2. Prep for the next step by eplacing the country names with their ISO3 codes using the `countrycode` package
+
+```{r}
+
+data <- read.csv("countries.csv", header = TRUE)
+  
+data$country_name <- countrycode(data$country_name, origin = 'country.name', destination = 'iso3c')
+
+```
+
+## Resolving my not-so-smart assumption 
+
+The following pipe will fix my putting Scotland and England in my list as separate countries ("Doh!"). Here's a play-by-play of what it does:
+
+1. Remove the subset of rows that return NA (in this case Scotland and England0
+2. Add a new row for the United Kingdom
+3. Replace the United Kingdom value with its ISO3 code
+3. Store all as an updated data frame named `newdata`
+
+```{r}
+
+newdata <- data[-which(is.na(data)), ] %>%
+  add_row(country_name = countrycode("United Kingdom", origin = 'country.name', destination = 'iso3c'), trip_type = "visit")
+
+```
+
+# Creating a static map
+
+Eventually, I would love to have something interactive. But I'll start with a static map using two methods using `rworldmap` first, then `ggplot2`.
+
+## 1) Summary of `trip_type`
+
+While I knew there were only three categories, it's always nice to double-check in case I made any typos that might mess up my maps. The easiest way to do this is to take a look at the summary stats of the variable in question.
+
+```{r}
+table(newdata$trip_type)
+length(newdata$trip_type)
+```
+
+## 2) Option 1: Create Map Using `rworldmap`
+ 
+Using the `rworldmap` package, I will use the `joinCountryData2map()` function to join my nice and clean data frame of countries I've been to with the country map data in the `rworldmap` package.
+
+```{r}
+country_map <- joinCountryData2Map(newdata, 
+                                   joinCode = "ISO3",
+                                   nameJoinColumn = "country_name")
+```
+
+Now that all the info is combined into the country_map object, I will use the `mapCountryData()` function to start mapping. I'll set the colors to match the ones used throughout my website, and assign countries I have yet to step foot into an opaque gray.
+
+*Note: the order of colors in the colourPalette argument match up to the categories of the `trip_type` variable, since R arranges character elements in alphabetical order by default (lived, transit, visit).*
+
+```{r}
+map1 <- mapCountryData(country_map, nameColumnToPlot="trip_type", 
+                       catMethod = "categorical", 
+                       missingCountryCol = gray(.8),
+                       colourPalette = c("black", "turquoise", "blue"), 
+                       mapTitle = "Places I've been to", borderCol = "white")
+
+```
+
+Meh. It works, but it's not the aesthetically-pleasing result I was hoping for.
+
+I could add the argument `addLegend = FALSE` to remove the clunky legend, then use the `addMapLegend` function to create a custom one. Beyond that, however, there are few styling options in the `rworldmap` package.
+
+To really get something pretty and presentable, I will need to use some more robust mapping and data visualization packages: `ggplot2` and `ggirafe`.
+
+# 3) Option 2: Create map using `ggplot2`
+
+Create a base map by retrieving spacial information about, well, every country on Earth using the `rnaturalearth` and `rnaturalearthdata` packages. I will also need to install the `sf` package, which will help with encoding and working with the spacial data retrieved using the first packages.
+
+```{r}
+suppressPackageStartupMessages(library(rnaturalearth))
+suppressPackageStartupMessages(library(rnaturalearthdata))
+suppressPackageStartupMessages(library(sf))
+```
+
+First, I will create an `sf` object, or spacial data frame, using the `ne_countries()` function in the `rnaturalearth` package. 
+
+Once that info is stored into a data frame called `world`, I can add a new variable or column to add information about whether I visited, lived in, or transited through each of the countries using the `merge()` function. There's just one problem: I haven't changed the variable name of `country_names` yet, so R won't be able to find a common variable to merge with `world`.
+
+I could change all the ISO3 values back to country names and rename the column to match any one of the `sovereignt` column. Instead, I decided to change it to `iso_a3` instead, which was more accurate.
+
+
+```{r}
+world <- ne_countries(scale = "medium", returnclass = "sf") 
+
+newdata2 <- rename(newdata, iso_a3 = country_name)
+
+world2 <- merge(world, newdata2, all = TRUE)
+```
+
+Now that the object `world2` is ready and complete with all the countries I've been to, we can get to mapping - again. While there's plenty you can do with `ggplot2`, I wanted some extra styles. I installed and loaded the `ggthemes` package below, which has some great templates you can tweak. I chose the `theme_wsj`, inspired by the styles of the Wall Street Journal.
+
+```{r}
+suppressPackageStartupMessages(library(ggthemes))
+
+WorldMap2 <- ggplot(data = world2) +
+    geom_sf(aes(fill = trip_type)) +
+    theme_wsj(color = "white", base_family = "mono") + 
+    ggtitle("Places I've been to", subtitle = paste0("(", sum(!is.na(world2$trip_type)), " countries)")) +
+    scale_fill_manual(breaks = c("long_term", "visit", "transit", "NA"), 
+                      values=c("#856C8B", "#8BABA2", "#A9A9A9", "#DDDDD"),
+                      labels=c("Lived in", "Visited", "Traveled through", "NA")) +
+    guides(fill=guide_legend(title=NULL))
+
+WorldMap2
+
+```
+
+Much better. As pretty as this is, I want it to be more dynamic. Not just because it looks cool, but there are some practical benefits like:
+
+1. People would be able to zoom and see smaller European countries
+2. For the less geographically gifted (no judgment, I myself put Scotland and England as separate countries), I want it to be easy to identify which country is which
+
+# Creating an interactive map
+
+First, I'll create a new object called `WorldMap3` using `ggplot2` and the `geom_sf_interactive()` function. Here I'll use most of the same customization options as I did when making `WorldMap2`, with the exception of adding tool tips to reveal the country name on hover.
+
+```{r}
+suppressPackageStartupMessages(library(ggiraph))
+
+WorldMap3 <- ggplot(world2) +
+  geom_sf_interactive(
+    aes(fill = trip_type,
+        tooltip = sprintf("%s<br/>%s", iso_a3, formal_en))) + #Added tooltip here
+  theme_wsj(color = "white", base_family = "mono") + 
+  ggtitle("Places I've been to", subtitle = paste0("(", sum(!is.na(world2$trip_type)), " countries)")) +
+  scale_fill_manual(breaks = c("long_term", "visit", "transit", "NA"), 
+                      values=c("#856C8B", "#8BABA2", "#A9A9A9", "#DDDDD"),
+                      labels=c("Lived in", "Visited", "Traveled through", "Haven't visited yet")) +
+  guides(fill=guide_legend(title=NULL))
+```
+
+Next, I'll convert the existing `WorldMap3` object to an html widget using `girafe()`, part of the `ggirafe` package. This function also allows me to add more custom styles like using the country fill color as the fill of the tooltip and adding zoom options.
+
+```{r}
+WorldMap3 <- girafe(code, 
+                    ggobj = WorldMap3,
+                    options = list(opts_tooltip(use_fill = TRUE),
+                                   opts_zoom(min = 1, max = 5),
+                                   opts_toolbar(saveaspng = FALSE))) #removes default "save as PNG' option on widget
+```
+
+# The grand finale
+
+```{r}
+WorldMap3
+```
+
+
+

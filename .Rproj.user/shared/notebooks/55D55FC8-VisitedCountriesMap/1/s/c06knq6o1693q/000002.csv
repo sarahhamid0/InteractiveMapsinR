@@ -1,5 +1,0 @@
-"0","WorldMap3 <- girafe(code, "
-"0","                    ggobj = WorldMap3,"
-"0","                    options = list(opts_tooltip(use_fill = TRUE),"
-"0","                                   opts_zoom(min = 1, max = 5),"
-"0","                                   opts_toolbar(saveaspng = FALSE))) #removes default ""save as PNG' option on widget"

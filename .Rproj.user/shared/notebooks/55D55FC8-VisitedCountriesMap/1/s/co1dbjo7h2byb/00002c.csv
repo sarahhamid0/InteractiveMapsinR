@@ -1,6 +1,0 @@
-"0","map1 <- mapCountryData(country_map, nameColumnToPlot=""trip_type"", "
-"0","                       catMethod = ""categorical"", "
-"0","                       missingCountryCol = gray(.8),"
-"0","                       colourPalette = c(""black"", ""turquoise"", ""blue""), "
-"0","                       mapTitle = ""Places I've been to"", borderCol = ""white"")"
-"0",""
